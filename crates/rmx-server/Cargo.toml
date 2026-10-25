@@ -1,0 +1,27 @@
+[package]
+name = "rmx-server"
+description = "The rust-multiplexer server: owns workspaces, PTYs and composes frames for clients"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+rmx-config = { path = "../rmx-config" }
+rmx-core = { path = "../rmx-core" }
+rmx-proto = { path = "../rmx-proto" }
+crossterm.workspace = true
+notify = "8"
+serde.workspace = true
+serde_json = "1"
+anyhow.workspace = true
+portable-pty.workspace = true
+ratatui.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+serde_json = "1"
+crossterm.workspace = true
+tokio = { workspace = true, features = ["test-util"] }

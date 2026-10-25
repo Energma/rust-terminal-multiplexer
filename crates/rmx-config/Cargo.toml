@@ -1,0 +1,17 @@
+[package]
+name = "rmx-config"
+description = "Config file, keybinding presets, action registry and key engine for rust-multiplexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+crossterm.workspace = true
+dirs.workspace = true
+ratatui.workspace = true
+serde.workspace = true
+serde_spanned = "1.1.2"
+strsim = "0.11.1"
+toml.workspace = true

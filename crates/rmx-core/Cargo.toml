@@ -1,0 +1,17 @@
+[package]
+name = "rmx-core"
+description = "Pure logic for rust-multiplexer: terminal emulation, key encoding, layout (no I/O)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+crossterm.workspace = true
+ratatui.workspace = true
+vt100.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json = "1"

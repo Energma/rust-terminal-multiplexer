@@ -1,0 +1,59 @@
+# rmx configuration. Every setting is optional: delete a line to get the default back.
+# Reload with Leader Shift+R (or "Reload config" in the palette); panes keep running.
+
+# Keybinding preset to start from: "windows" (default), "tmux", "vim" or "none".
+preset = "windows"
+
+# Ctrl+Shift shortcuts (Ctrl+Shift+T, Alt+Arrows, ...): "auto" turns them on when the
+# terminal can report them (always on Windows; kitty keyboard protocol elsewhere).
+direct_keys = "auto"
+
+[general]
+shell = "auto"            # or "pwsh", "/bin/zsh", ...
+scrollback = 10000        # lines kept per pane
+mouse = true
+copy_on_select = true     # mouse drag copies to the clipboard
+restore_on_start = false  # reopen the last layout when the background service starts
+
+[leader]
+key = "ctrl+space"        # the tmux preset uses "ctrl+b"
+timeout_ms = 2000         # 0 = wait forever for the key after the leader
+show_hints = true         # show what the next key can do
+
+[theme]
+# Colors are "#rrggbb", an ANSI index ("238") or a name ("blue").
+# status_bg = "#1e1e2e"
+# status_fg = "#cdd6f4"
+# accent = "#cba6f7"
+# border = "#45475a"
+# active_border = "#89b4fa"
+# menu_bg = "#313244"
+# menu_fg = "#cdd6f4"
+# menu_highlight_bg = "#89b4fa"
+# menu_highlight_fg = "#1e1e2e"
+
+# Key tables: normal, leader (after the leader key), select, resize, locked, or any
+# name of your own (enter it with { action = "enter-mode", mode = "<name>" }).
+# A value is an action id or a table with arguments; "none" removes a preset key.
+# Leader ? lists the current bindings; the command palette lists every action.
+
+# [keys.normal]
+# "f10" = "open-menu"
+# "alt+1" = { action = "go-to-tab", index = 1 }
+# "ctrl+space z" = "toggle-pane-zoom"            # same as "z" under [keys.leader]
+
+# [keys.leader]
+# "|" = { action = "split-pane", direction = "right" }
+# "-" = { action = "split-pane", direction = "down", size = "30%" }
+# "r" = { action = "enter-mode", mode = "resize", sticky = true }
+# "g" = { action = "run", command = "lazygit", in = "new-tab" }
+# "x" = "none"
+
+# [keys.resize]
+# "left" = { action = "resize-pane", direction = "left", amount = 2 }
+# "esc" = "exit-mode"
+
+# Extra command-palette entries.
+# [[commands]]
+# name = "Open htop"
+# action = { action = "run", command = "htop", in = "split-right" }

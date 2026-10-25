@@ -1,0 +1,16 @@
+[package]
+name = "rmx-proto"
+description = "Client/server messages and wire codec for rust-multiplexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+crossterm.workspace = true
+postcard.workspace = true
+ratatui.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true

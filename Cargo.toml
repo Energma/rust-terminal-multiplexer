@@ -1,0 +1,61 @@
+[package]
+name = "rust-multiplexer"
+description = "A cross-platform terminal multiplexer with Windows-familiar menus and fully custom keybindings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "rmx"
+path = "src/main.rs"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dependencies]
+rmx-client = { path = "crates/rmx-client" }
+rmx-config = { path = "crates/rmx-config" }
+rmx-ipc = { path = "crates/rmx-ipc" }
+rmx-proto = { path = "crates/rmx-proto" }
+rmx-server = { path = "crates/rmx-server" }
+anyhow.workspace = true
+clap.workspace = true
+dirs.workspace = true
+serde_json = "1"
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.88"  # let-chains
+
+[workspace.dependencies]
+anyhow = "1.0.104"
+clap = { version = "4", features = ["derive", "env"] }
+crossterm = { version = "0.29.0", features = ["serde"] }
+dirs = "7.0.0"
+portable-pty = "0.9.0"
+postcard = { version = "1", features = ["use-std"] }
+ratatui = { version = "0.30.2", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+toml = "1.1.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+vt100 = "0.18.1"
+
+# Small, fast release binary: one of the "better than tmux/zellij" goals is a
+# light footprint.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

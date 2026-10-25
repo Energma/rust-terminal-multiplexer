@@ -1,0 +1,33 @@
+{
+    "version": "0.1.0",
+    "description": "Cross-platform terminal multiplexer with Windows-familiar menus and custom keybindings",
+    "homepage": "https://github.com/OWNER/rust-multiplexer",
+    "license": "MIT OR Apache-2.0",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/OWNER/rust-multiplexer/releases/download/v0.1.0/rmx-v0.1.0-x86_64-pc-windows-msvc.zip",
+            "hash": "REPLACE_WITH_SHA256",
+            "extract_dir": "rmx-v0.1.0-x86_64-pc-windows-msvc"
+        },
+        "arm64": {
+            "url": "https://github.com/OWNER/rust-multiplexer/releases/download/v0.1.0/rmx-v0.1.0-aarch64-pc-windows-msvc.zip",
+            "hash": "REPLACE_WITH_SHA256",
+            "extract_dir": "rmx-v0.1.0-aarch64-pc-windows-msvc"
+        }
+    },
+    "bin": "rmx.exe",
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/OWNER/rust-multiplexer/releases/download/v$version/rmx-v$version-x86_64-pc-windows-msvc.zip",
+                "extract_dir": "rmx-v$version-x86_64-pc-windows-msvc"
+            },
+            "arm64": {
+                "url": "https://github.com/OWNER/rust-multiplexer/releases/download/v$version/rmx-v$version-aarch64-pc-windows-msvc.zip",
+                "extract_dir": "rmx-v$version-aarch64-pc-windows-msvc"
+            }
+        },
+        "hash": { "url": "$url.sha256" }
+    }
+}
