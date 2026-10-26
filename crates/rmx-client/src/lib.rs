@@ -32,6 +32,7 @@ use tokio::sync::mpsc;
 pub struct Options {
     pub attach: Attach,
     pub open_manager: bool,
+    pub cwd: Option<String>,
 }
 
 /// Runs until the server ends the session; returns its reason.
@@ -49,6 +50,7 @@ pub async fn run(mut conn: ClientEnd, opts: Options) -> Result<String> {
             enhanced_keys: guard.enhanced_keys,
             attach: opts.attach,
             open_manager: opts.open_manager,
+            cwd: opts.cwd,
         }))
         .await?;
     spawn_input_thread(conn.tx.clone());

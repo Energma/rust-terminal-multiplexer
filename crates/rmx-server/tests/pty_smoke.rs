@@ -95,6 +95,7 @@ impl TestClient {
             enhanced_keys: false,
             attach,
             open_manager: false,
+            cwd: None,
         };
         conn.tx.send(ClientMsg::Hello(hello)).await.unwrap();
         Self {

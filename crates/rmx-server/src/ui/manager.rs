@@ -5,6 +5,7 @@
 //! sessions from, with every operation one key away and listed on screen.
 
 use std::collections::HashSet;
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 use crossterm::event::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
@@ -28,15 +29,18 @@ fn tab_id(ctx: &Ctx, w: WorkspaceId, t: usize) -> Option<TabId> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Row {
+    /// "+ New workspace in <folder where rmx was run>".
+    NewHere,
     Workspace(WorkspaceId),
     Tab(WorkspaceId, usize),
     Pane(WorkspaceId, usize, PaneId),
 }
 
 impl Row {
-    fn workspace(self) -> WorkspaceId {
+    fn workspace(self) -> Option<WorkspaceId> {
         match self {
-            Row::Workspace(w) | Row::Tab(w, _) | Row::Pane(w, _, _) => w,
+            Row::NewHere => None,
+            Row::Workspace(w) | Row::Tab(w, _) | Row::Pane(w, _, _) => Some(w),
         }
     }
 }
@@ -88,6 +92,9 @@ impl Manager {
             .map(|f| f.text.to_lowercase())
             .unwrap_or_default();
         let mut rows = Vec::new();
+        if ctx.launch_cwd.is_some() && query.is_empty() {
+            rows.push(Row::NewHere);
+        }
         for ws in ctx.workspaces {
             let tab_name = |t: usize| crate::tab_title(&ws.tabs[t], ctx.panes).to_lowercase();
             let ws_match = ws.name.to_lowercase().contains(&query);
@@ -125,7 +132,7 @@ impl Manager {
     fn index(&self, rows: &[Row], ctx: &Ctx) -> usize {
         self.selected
             .and_then(|s| rows.iter().position(|r| *r == s))
-            .or_else(|| rows.iter().position(|r| r.workspace() == ctx.current))
+            .or_else(|| rows.iter().position(|r| r.workspace() == Some(ctx.current)))
             .unwrap_or(0)
     }
 
@@ -136,6 +143,10 @@ impl Manager {
     fn open(&self, row: Row, ctx: &Ctx) -> Outcome {
         let tab = |w, t| tab_id(ctx, w, t);
         let cmd = match row {
+            Row::NewHere => Cmd::NewWorkspace {
+                name: None,
+                cwd: ctx.launch_cwd.map(Path::to_path_buf),
+            },
             Row::Workspace(w) => Cmd::Open {
                 workspace: w,
                 tab: None,
@@ -160,6 +171,7 @@ impl Manager {
     fn tab_for(row: Row, ctx: &Ctx) -> Option<(WorkspaceId, TabId)> {
         let (w, t) = match row {
             Row::Tab(w, t) | Row::Pane(w, t, _) => (w, t),
+            Row::NewHere => return None,
             Row::Workspace(w) => (w, ctx.workspaces.iter().find(|x| x.id == w)?.active_tab),
         };
         Some((w, tab_id(ctx, w, t)?))
@@ -195,6 +207,22 @@ impl Manager {
         }
         let i = self.index(&rows, ctx);
         let row = rows[i];
+        // On the "new workspace here" row only opening, `n`, navigation and
+        // filtering make sense.
+        if row == Row::NewHere {
+            match key.code {
+                KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => return self.open(row, ctx),
+                KeyCode::Up
+                | KeyCode::Down
+                | KeyCode::Home
+                | KeyCode::End
+                | KeyCode::PageUp
+                | KeyCode::PageDown
+                | KeyCode::Esc
+                | KeyCode::Char('k' | 'j' | 'g' | 'G' | 'q' | 'n' | '/' | '1'..='9') => {}
+                _ => return Outcome::STAY,
+            }
+        }
         // 1-9 open that workspace directly, the fastest way to switch.
         if let KeyCode::Char(c @ '1'..='9') = key.code
             && let Some(ws) = ctx.workspaces.get(usize::from(c as u8 - b'1'))
@@ -226,6 +254,7 @@ impl Manager {
                 _ => self.select(&rows, (i + 1).min(rows.len() - 1)),
             },
             KeyCode::Left | KeyCode::Char('h') => match row {
+                Row::NewHere => {}
                 Row::Workspace(w) => {
                     self.expanded_ws.remove(&w);
                 }
@@ -242,6 +271,7 @@ impl Manager {
                 }
             },
             KeyCode::Char(' ') => match row {
+                Row::NewHere => {}
                 Row::Workspace(w) => {
                     if !self.expanded_ws.remove(&w) {
                         self.expanded_ws.insert(w);
@@ -261,19 +291,23 @@ impl Manager {
                     false,
                     Cmd::Prompt {
                         title: "New workspace name".into(),
-                        initial: String::new(),
-                        then: PromptThen::NewWorkspace,
+                        initial: ctx
+                            .launch_cwd
+                            .and_then(Path::file_name)
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_default(),
+                        then: PromptThen::NewWorkspace {
+                            cwd: ctx.launch_cwd.map(Path::to_path_buf),
+                        },
                     },
                 );
             }
             KeyCode::Char('t') => {
-                self.expanded_ws.insert(row.workspace());
-                return Outcome::cmd(
-                    false,
-                    Cmd::NewTab {
-                        workspace: row.workspace(),
-                    },
-                );
+                let Some(w) = row.workspace() else {
+                    return Outcome::STAY;
+                };
+                self.expanded_ws.insert(w);
+                return Outcome::cmd(false, Cmd::NewTab { workspace: w });
             }
             KeyCode::Char('|' | 'v') => {
                 if let Some((workspace, tab)) = Self::tab_for(row, ctx) {
@@ -301,6 +335,7 @@ impl Manager {
             }
             KeyCode::Char('r') | KeyCode::F(2) => {
                 let (title, initial, then) = match row {
+                    Row::NewHere => return Outcome::STAY,
                     Row::Workspace(w) => (
                         "Rename workspace".to_owned(),
                         ws_name(w),
@@ -332,6 +367,7 @@ impl Manager {
             }
             KeyCode::Char('x') | KeyCode::Delete => {
                 let (message, then) = match row {
+                    Row::NewHere => return Outcome::STAY,
                     Row::Workspace(w) => (
                         format!("Close workspace \"{}\" and all its tabs?", ws_name(w)),
                         Cmd::CloseWorkspace { workspace: w },
@@ -464,10 +500,34 @@ impl Manager {
             let y = list.y + (i - scroll) as u16;
             let style = if i == sel { hl } else { base };
             buf.set_style(Rect::new(list.x, y, list.width, 1), style);
-            let Some(ws) = ctx.workspaces.iter().find(|w| w.id == row.workspace()) else {
+            if *row == Row::NewHere {
+                let dir = ctx.launch_cwd.map(crate::shorten_home).unwrap_or_default();
+                let room = usize::from(list.width).saturating_sub(19);
+                let text = format!("+ New workspace in {}", ellipsize_start(&dir, room));
+                let st = if i == sel {
+                    style
+                } else {
+                    style.fg(theme.accent)
+                };
+                put(
+                    buf,
+                    list.x,
+                    y,
+                    &text,
+                    list.width,
+                    st.add_modifier(Modifier::BOLD),
+                );
+                continue;
+            }
+            let Some(ws) = ctx
+                .workspaces
+                .iter()
+                .find(|w| Some(w.id) == row.workspace())
+            else {
                 continue;
             };
             let (text, meta) = match *row {
+                Row::NewHere => continue,
                 Row::Workspace(w) => {
                     let arrow = if self.expanded_ws.contains(&w) {
                         "▾"
@@ -489,7 +549,13 @@ impl Manager {
                         .copied()
                         .unwrap_or(0)
                         .saturating_sub(usize::from(w == ctx.current));
-                    let mut meta = format!("{n} tab{}", if n == 1 { "" } else { "s" });
+                    // Where it lives, so sessions are easy to tell apart.
+                    let dir = ctx
+                        .panes
+                        .get(&ws.active().active_pane)
+                        .map(|p| crate::shorten_home(&p.cwd()))
+                        .unwrap_or_default();
+                    let mut meta = format!("{dir} · {n} tab{}", if n == 1 { "" } else { "s" });
                     if viewers > 0 {
                         meta.push_str(&format!(" · {viewers} attached"));
                     }
@@ -526,6 +592,8 @@ impl Manager {
                     (format!("        {active}{n} {title}"), format!("%{p}"))
                 }
             };
+            // Details never take more than half the row, so names stay readable.
+            let meta = ellipsize_start(&meta, usize::from(list.width / 2));
             let meta_w = meta.chars().count() as u16;
             put(
                 buf,
@@ -548,11 +616,14 @@ impl Manager {
         // Preview of the selected (or the workspace's active) tab, live.
         if preview.width >= 10
             && let Some(&row) = rows.get(sel)
-            && let Some(ws) = ctx.workspaces.iter().find(|w| w.id == row.workspace())
+            && let Some(ws) = ctx
+                .workspaces
+                .iter()
+                .find(|w| Some(w.id) == row.workspace())
         {
             let t = match row {
                 Row::Tab(_, t) | Row::Pane(_, t, _) => t,
-                Row::Workspace(_) => ws.active_tab,
+                Row::Workspace(_) | Row::NewHere => ws.active_tab,
             };
             let tab = &ws.tabs[t];
             let focus = match row {
@@ -580,6 +651,28 @@ impl Manager {
             }
         }
 
+        if preview.width >= 10 && rows.get(sel) == Some(&Row::NewHere) {
+            let inner = super::panel(buf, preview, "New workspace", theme);
+            let dir = ctx.launch_cwd.map(crate::shorten_home).unwrap_or_default();
+            let lines = [
+                format!("Start a new workspace in {dir}"),
+                String::new(),
+                "Enter  create it, named after the folder".to_owned(),
+                "n      create it with a name you choose".to_owned(),
+                "1-9    or jump to an existing workspace".to_owned(),
+            ];
+            for (k, line) in lines.iter().enumerate() {
+                put(
+                    buf,
+                    inner.x + 1,
+                    inner.y + 1 + k as u16,
+                    line,
+                    inner.width.saturating_sub(2),
+                    base,
+                );
+            }
+        }
+
         // Footer: every operation, always visible.
         let mut x = footer.x;
         for (key, what) in FOOTER {
@@ -594,5 +687,31 @@ impl Manager {
             put(buf, x, footer.y, &w, need, dim);
             x += w.chars().count() as u16;
         }
+    }
+}
+
+/// Keeps the end of `s` (the useful part of a path) within `max` chars.
+fn ellipsize_start(s: &str, max: usize) -> String {
+    let n = s.chars().count();
+    if n <= max || max == 0 {
+        return if max == 0 {
+            String::new()
+        } else {
+            s.to_owned()
+        };
+    }
+    let tail: String = s.chars().skip(n - (max - 1)).collect();
+    format!("…{tail}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ellipsize_start;
+
+    #[test]
+    fn ellipsize_keeps_the_end() {
+        assert_eq!(ellipsize_start("~/code/api", 20), "~/code/api");
+        assert_eq!(ellipsize_start("/very/long/path/to/api", 8), "…/to/api");
+        assert_eq!(ellipsize_start("abc", 0), "");
     }
 }

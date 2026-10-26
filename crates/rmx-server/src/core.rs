@@ -40,6 +40,8 @@ enum Event {
 
 struct Client {
     tx: mpsc::Sender<ServerMsg>,
+    /// Where the user ran `rmx`: the session manager offers it for new workspaces.
+    launch_cwd: Option<PathBuf>,
     size: (u16, u16),
     workspace: WorkspaceId,
     engine: KeyEngine,
@@ -295,7 +297,9 @@ impl Core {
         let workspace = match hello.attach {
             Attach::Last => match self.workspaces.iter().max_by_key(|w| w.last_used) {
                 Some(w) => Ok(w.id),
-                None => self.new_workspace(None, None, None, pane_size),
+                None => {
+                    self.new_workspace(None, hello.cwd.clone().map(PathBuf::from), None, pane_size)
+                }
             },
             Attach::Named(name) => self
                 .workspaces
@@ -324,6 +328,7 @@ impl Core {
         let leader = keymap.leader().display_short();
         let mut client = Client {
             tx,
+            launch_cwd: hello.cwd.map(PathBuf::from).filter(|d| d.is_dir()),
             size: (hello.cols, hello.rows),
             workspace,
             engine: KeyEngine::new(),
@@ -349,6 +354,7 @@ impl Core {
                 &self.panes,
                 &self.attached,
                 workspace,
+                client.launch_cwd.as_deref(),
                 &self.opts,
             );
             client
@@ -445,6 +451,7 @@ impl Core {
         command: Option<String>,
         size: (u16, u16),
     ) -> Result<WorkspaceId> {
+        let cwd_for_name = cwd.clone();
         let pane = self.spawn_pane(
             SpawnSpec {
                 cwd,
@@ -455,7 +462,9 @@ impl Core {
         )?;
         let id = self.next_workspace;
         self.next_workspace += 1;
-        let name = self.unique_name(name);
+        // Unnamed workspaces are named after their folder ("api", "rust-mux"),
+        // which is what people look for in the session manager.
+        let name = self.unique_name(name.or_else(|| folder_name(cwd_for_name.as_deref())));
         self.workspaces.push(Workspace {
             id,
             name: name.clone(),
@@ -715,6 +724,7 @@ impl Core {
                 &self.panes,
                 &self.attached,
                 client.workspace,
+                client.launch_cwd.as_deref(),
                 &self.opts,
             );
             let outcome = client.overlays.last_mut().unwrap().handle_key(&key, &ctx);
@@ -833,6 +843,7 @@ impl Core {
             &self.panes,
             &self.attached,
             c.workspace,
+            c.launch_cwd.as_deref(),
             &self.opts,
         );
         let overlay = make(&ctx);
@@ -1241,11 +1252,11 @@ impl Core {
                         );
                     }
                 }
-                Cmd::NewWorkspace { name } => {
+                Cmd::NewWorkspace { name, cwd } => {
                     let ws = self.clients.get(&id).map(|c| c.workspace).unwrap_or(0);
                     let size = self.sizes.get(&ws).copied().unwrap_or(DEFAULT_SIZE);
-                    let cwd = self.cwd_of_active(ws);
-                    let new = self.new_workspace(Some(name), cwd, None, size)?;
+                    let cwd = cwd.or_else(|| self.cwd_of_active(ws));
+                    let new = self.new_workspace(name, cwd, None, size)?;
                     self.switch_workspace(id, new);
                 }
                 Cmd::Find(query) => {
@@ -1338,6 +1349,7 @@ impl Core {
                 &self.panes,
                 &self.attached,
                 c.workspace,
+                c.launch_cwd.as_deref(),
                 &self.opts,
             );
             let outcome = c
@@ -2036,6 +2048,7 @@ impl Core {
                 &self.panes,
                 &self.attached,
                 c.workspace,
+                c.launch_cwd.as_deref(),
                 &self.opts,
             );
             let view_size = self
@@ -2082,6 +2095,9 @@ fn end_select(c: &mut Client, panes: &mut HashMap<PaneId, Pane>) {
     c.engine.exit_mode();
 }
 
+// Takes the core's fields one by one (not `&self`) so callers can hold a
+// `&mut` client at the same time; hence the long argument list.
+#[allow(clippy::too_many_arguments)]
 fn make_ctx<'a>(
     config: &'a Config,
     keymap: &'a Keymap,
@@ -2089,6 +2105,7 @@ fn make_ctx<'a>(
     panes: &'a HashMap<PaneId, Pane>,
     attached: &'a HashMap<WorkspaceId, usize>,
     current: WorkspaceId,
+    launch_cwd: Option<&'a std::path::Path>,
     opts: &'a ServerOptions,
 ) -> Ctx<'a> {
     Ctx {
@@ -2098,6 +2115,7 @@ fn make_ctx<'a>(
         panes,
         attached,
         current,
+        launch_cwd,
         config_path: &opts.config_path,
         commands: &config.commands,
     }
@@ -2109,6 +2127,10 @@ const MIN_SIZE: (u16, u16) = (40, 10);
 
 fn clamp_size(cols: u16, rows: u16) -> (u16, u16) {
     (cols.max(MIN_SIZE.0), rows.max(MIN_SIZE.1))
+}
+
+fn folder_name(dir: Option<&std::path::Path>) -> Option<String> {
+    dir?.file_name().map(|n| n.to_string_lossy().into_owned())
 }
 
 fn pane_size_for(cols: u16, rows: u16) -> (u16, u16) {

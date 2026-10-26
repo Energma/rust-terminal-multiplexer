@@ -36,6 +36,11 @@ struct Cli {
     #[arg(long, global = true)]
     config: Option<PathBuf>,
 
+    /// Create a new workspace in the background, in the current folder
+    /// (named after it unless NAME is given), and return to the shell.
+    #[arg(short = 'n', long = "new", value_name = "NAME", num_args = 0..=1, default_missing_value = "")]
+    new: Option<String>,
+
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -167,12 +172,31 @@ fn real_main(cli: Cli) -> Result<i32> {
             runtime.block_on(run_server(&server, config_path, restore))?;
             Ok(0)
         }
-        // With sessions already running, start in the session manager so
-        // you see them all and choose; otherwise go straight into a new one.
-        None => {
-            let existing = runtime.block_on(has_workspaces(&server));
-            interactive(&runtime, &server, &config_path, Attach::Last, existing)
+        // `rmx -n [name]`: a new background workspace in this folder.
+        None if cli.new.is_some() => {
+            let name = cli.new.filter(|n| !n.is_empty());
+            let cwd = std::env::current_dir()
+                .ok()
+                .map(|d| d.display().to_string());
+            let body = runtime.block_on(request(
+                &server,
+                &config_path,
+                Request::NewWorkspace {
+                    name,
+                    cwd,
+                    command: None,
+                },
+            ))?;
+            let v: serde_json::Value = serde_json::from_str(&body)?;
+            println!(
+                "created workspace \"{}\" (open it with `rmx`)",
+                v["name"].as_str().unwrap_or("?")
+            );
+            Ok(0)
         }
+        // Plain `rmx` is the session manager: see every session, open one,
+        // or start a new one in this folder.
+        None => interactive(&runtime, &server, &config_path, Attach::Last, true),
         Some(Command::Attach { name }) => {
             let attach = name.map_or(Attach::Last, Attach::Named);
             interactive(&runtime, &server, &config_path, attach, false)
@@ -385,21 +409,12 @@ fn interactive(
                 "rmx: note: this terminal does not let programs outlive it, so closing it will also close your workspaces"
             );
         }
-        rmx_client::run(conn, rmx_client::Options { attach, open_manager }).await
+        let cwd = std::env::current_dir().ok().map(|d| d.display().to_string());
+        rmx_client::run(conn, rmx_client::Options { attach, open_manager, cwd }).await
     })?;
     println!("[rmx: {reason}]");
     // The input thread may still be blocked reading the terminal; don't wait for it.
     Ok(0)
-}
-
-async fn has_workspaces(server: &str) -> bool {
-    let Ok(body) = request_existing(server, Request::List).await else {
-        return false;
-    };
-    serde_json::from_str::<serde_json::Value>(&body)
-        .ok()
-        .and_then(|v| v["workspaces"].as_array().map(|w| !w.is_empty()))
-        .unwrap_or(false)
 }
 
 /// Sends one request to a server, starting one if needed.

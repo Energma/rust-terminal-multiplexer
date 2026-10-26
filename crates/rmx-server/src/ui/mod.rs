@@ -36,6 +36,8 @@ pub struct Ctx<'a> {
     pub panes: &'a HashMap<PaneId, Pane>,
     /// Interactive clients per workspace (including this one).
     pub attached: &'a HashMap<WorkspaceId, usize>,
+    /// Where this client ran `rmx`, if known.
+    pub launch_cwd: Option<&'a Path>,
     pub current: WorkspaceId,
     pub config_path: &'a Path,
     pub commands: &'a [rmx_config::CustomCommand],
@@ -101,7 +103,10 @@ pub enum Cmd {
         name: String,
     },
     NewWorkspace {
-        name: String,
+        /// `None` names it after its folder.
+        name: Option<String>,
+        /// `None` uses the current pane's folder.
+        cwd: Option<std::path::PathBuf>,
     },
     Find(String),
     Open {
@@ -142,7 +147,7 @@ pub enum Cmd {
 pub enum PromptThen {
     RenameTab { workspace: WorkspaceId, tab: TabId },
     RenameWorkspace { workspace: WorkspaceId },
-    NewWorkspace,
+    NewWorkspace { cwd: Option<std::path::PathBuf> },
     Find,
 }
 
