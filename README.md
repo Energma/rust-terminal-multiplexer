@@ -3,8 +3,9 @@
 A terminal multiplexer, like tmux, that runs natively on **Windows, Linux and macOS**. It has the menus, command palette and keys of Windows Terminal, and every keybinding can be changed.
 
 - **Workspaces, tabs and split panes**, kept in a background server. Close the terminal and your shells keep running; `rmx` brings them back.
-- **Session manager** (plain `rmx` once sessions exist, `rmx manage`, or Leader `s`):
-  - a full-screen tree of workspaces, tabs and panes with a live preview, showing which ones are attached elsewhere
+- **Session manager** (plain `rmx`, or Leader `s` inside rmx):
+  - a full-screen tree of workspaces, tabs and panes with a live preview, each showing its folder and whether it's attached elsewhere
+  - a top row, **+ New workspace in <this folder>**, for starting a session where you ran `rmx`
   - **Enter** or **1–9** opens a workspace
   - from the same screen you can create (`n`, `t`), rename (`r`), split (`|`, `-`) and close (`x`) anything
 - **Easy to discover:**
@@ -36,8 +37,9 @@ Release archives for Windows (x64/ARM64), macOS (Apple silicon/Intel) and Linux 
 ## Use
 
 ```sh
-rmx                    # first time: new workspace. Later: the session manager, to pick one
-rmx attach             # skip the manager: straight into the last workspace
+rmx                    # session manager: see all sessions, open one, or start one in this folder
+rmx -n [name]          # new session in this folder, in the background (named after the folder)
+rmx attach             # skip the manager: straight into the last session
 rmx new -n api         # new workspace "api"
 rmx manage             # session manager
 rmx list               # workspaces, tabs, panes   (--json for scripts)

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 /// Bumped on any incompatible change; client and server refuse mismatches.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ClientMsg {
@@ -58,6 +58,8 @@ pub struct Hello {
     pub attach: Attach,
     /// Start with the session manager open.
     pub open_manager: bool,
+    /// Directory `rmx` was run from, offered for new workspaces.
+    pub cwd: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

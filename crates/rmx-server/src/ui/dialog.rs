@@ -44,7 +44,10 @@ impl Prompt {
                         workspace,
                         name: text,
                     },
-                    PromptThen::NewWorkspace => Cmd::NewWorkspace { name: text },
+                    PromptThen::NewWorkspace { cwd } => Cmd::NewWorkspace {
+                        name: Some(text),
+                        cwd,
+                    },
                     PromptThen::Find => Cmd::Find(text),
                 };
                 Outcome::cmd(true, cmd)
