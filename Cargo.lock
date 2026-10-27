@@ -1829,6 +1829,7 @@ dependencies = [
  "rmx-proto",
  "rmx-server",
  "serde_json",
+ "sha2",
  "tokio",
  "tracing",
  "tracing-subscriber",

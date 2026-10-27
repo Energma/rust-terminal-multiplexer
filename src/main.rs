@@ -14,6 +14,8 @@ use rmx_config::Config;
 use rmx_proto::{Attach, ClientMsg, Request, ServerMsg};
 use tracing_subscriber::EnvFilter;
 
+mod update;
+
 #[derive(Parser)]
 #[command(
     name = "rmx",
@@ -122,6 +124,12 @@ enum Command {
     /// Stop the background server and close everything.
     #[command(visible_alias = "kill-server")]
     Stop,
+    /// Replace this binary with the latest GitHub release.
+    Update {
+        /// Only report whether a newer release exists.
+        #[arg(long)]
+        check: bool,
+    },
     #[command(name = "__server", hide = true)]
     Server {
         #[arg(long)]
@@ -172,6 +180,7 @@ fn real_main(cli: Cli) -> Result<i32> {
             runtime.block_on(run_server(&server, config_path, restore))?;
             Ok(0)
         }
+        Some(Command::Update { check }) => update::run(check),
         // `rmx -n [name]`: a new background workspace in this folder.
         None if cli.new.is_some() => {
             let name = cli.new.filter(|n| !n.is_empty());

@@ -28,8 +28,17 @@ A terminal multiplexer, like tmux, that runs natively on **Windows, Linux and ma
 
 ## Install
 
+Download the archive for your platform from the [releases page](https://github.com/Energma/rust-terminal-multiplexer/releases), unpack it, and put `rmx` on your `PATH`. From then on:
+
 ```sh
-cargo install --path .          # from a checkout
+rmx update          # replace the binary with the latest release
+rmx update --check  # only tell me if there is one
+```
+
+Or from a checkout:
+
+```sh
+cargo install --path .
 ```
 
 Release archives for Windows (x64/ARM64), macOS (Apple silicon/Intel) and Linux (glibc and static musl) are built by `.github/workflows/release.yml` when you push a `v*` tag. Scoop and Homebrew templates are in `packaging/`.
