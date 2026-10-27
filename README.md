@@ -2,6 +2,23 @@
 
 A terminal multiplexer, like tmux, that runs natively on **Windows, Linux and macOS**. It has the menus, command palette and keys of Windows Terminal, and every keybinding can be changed.
 
+## Install
+
+One command on Linux and macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Energma/rust-terminal-multiplexer/main/install.sh | sh
+```
+
+On Windows, download the zip from the [releases page](https://github.com/Energma/rust-terminal-multiplexer/releases) and put `rmx.exe` on your `PATH`. From then on:
+
+```sh
+rmx update          # replace the binary with the latest release
+rmx update --check  # only tell me if there is one
+```
+
+Or from a checkout: `cargo install --path .`. Release archives for Windows (x64/ARM64), macOS (Apple silicon/Intel) and Linux (glibc and static musl) are built by `.github/workflows/release.yml` when you push a `v*` tag. Scoop and Homebrew templates are in `packaging/`.
+
 - **Workspaces, tabs and split panes**, kept in a background server. Close the terminal and your shells keep running; `rmx` brings them back.
 - **Session manager** (plain `rmx`, or Leader `s` inside rmx):
   - a full-screen tree of workspaces, tabs and panes with a live preview, each showing its folder and whether it's attached elsewhere
@@ -25,23 +42,6 @@ A terminal multiplexer, like tmux, that runs natively on **Windows, Linux and ma
 - **Built-in session restore** after a reboot, with no plugins.
 - **Scriptable:** `rmx list --json`, `rmx send`, `rmx capture`, and `rmx events` (a stream of JSON lines).
 - **Small:** one binary of about 4 MB.
-
-## Install
-
-Download the archive for your platform from the [releases page](https://github.com/Energma/rust-terminal-multiplexer/releases), unpack it, and put `rmx` on your `PATH`. From then on:
-
-```sh
-rmx update          # replace the binary with the latest release
-rmx update --check  # only tell me if there is one
-```
-
-Or from a checkout:
-
-```sh
-cargo install --path .
-```
-
-Release archives for Windows (x64/ARM64), macOS (Apple silicon/Intel) and Linux (glibc and static musl) are built by `.github/workflows/release.yml` when you push a `v*` tag. Scoop and Homebrew templates are in `packaging/`.
 
 ## Use
 
