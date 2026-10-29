@@ -50,7 +50,7 @@ pub fn default_path(server_name: &str) -> PathBuf {
 }
 
 fn dirs_data() -> PathBuf {
-    // Same base as the log file (see main.rs) so users find both together.
+    // Same base as the log file (see src/logging.rs) so users find both together.
     std::env::var_os(if cfg!(windows) {
         "LOCALAPPDATA"
     } else {

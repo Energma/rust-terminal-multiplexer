@@ -18,9 +18,11 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all --check
+      # House rule: no Rust file over 200 lines (see docs/DEVELOPMENT.md).
+      - run: bash scripts/check-file-length.sh 200 src crates
 
   # Real-PTY smoke tests on every supported CI OS. Windows is left out until
-  # the named-pipe client in crates/rmx-ipc/src/windows.rs is fixed (its
+  # the named-pipe client in crates/rmx-ipc/src/windows/ is fixed (its
   # tests hang there); add windows-latest back to the matrix with that fix.
   test:
     strategy:

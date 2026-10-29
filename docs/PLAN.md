@@ -92,16 +92,20 @@ Decisions and why:
 ### 4.2 Crate layout (cargo workspace, one shipped binary)
 
 ```
-rmx/
+rust-multiplexer/
+  src/             bin `rmx`: clap CLI (src/cli/), self-update (src/update/), logging.
   crates/
-    rmx-core/      model (Workspace/Tab/Pane ids), LayoutTree, Target parsing,
-                    Action enum + registry, KeyChord/KeyMap/KeyEngine, Config (serde/toml),
-                    Emulator trait + vt100 impl, key→VT encoder. No I/O, so it can be unit-tested.
+    rmx-core/      Pure logic: LayoutTree, Emulator trait + vt100 impl, key→VT encoder. No I/O.
+    rmx-config/    Action enum + registry, KeyChord parser, KeyMap/KeyEngine, presets,
+                    Config (serde/toml) with located errors.
     rmx-proto/     ClientMsg / ServerMsg, codec (postcard + length prefix), version handshake.
-    rmx-server/    Core loop, PTY panes, compositor, persistence, config watcher, IPC listener.
-    rmx-client/    terminal setup/teardown, input capture, frame apply + ratatui draw.
-    rmx/           bin: clap CLI, server spawn/locate, subcommands.
+    rmx-ipc/       Unix sockets / Windows named pipes, detached spawn, socket security.
+    rmx-server/    Core loop, PTY panes, compositor, menus/palette/manager, select mode,
+                    persistence, config watcher, control API.
+    rmx-client/    Terminal setup/teardown, input capture, frame apply + ratatui draw, clipboard.
 ```
+
+Inside each crate, modules are folders split by responsibility, with no file over 200 lines. See [DEVELOPMENT.md](DEVELOPMENT.md) for the module map and the code rules.
 
 ### 4.3 Stack
 

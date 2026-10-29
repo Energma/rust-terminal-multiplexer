@@ -1,6 +1,6 @@
 //! Span-carrying parse errors and "did you mean" suggestions.
 //!
-//! Parsers deep in the tree only know byte spans; `config.rs` turns a [`Diag`]
+//! Parsers deep in the tree only know byte spans; `config::error` turns a [`Diag`]
 //! into a user-facing error with file, line, column and a source excerpt.
 
 use std::ops::Range;

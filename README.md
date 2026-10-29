@@ -133,6 +133,9 @@ The design and roadmap are in [docs/PLAN.md](docs/PLAN.md).
 
 ```sh
 cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
+bash scripts/check-file-length.sh 200 src crates   # house rule: no Rust file over 200 lines
 ```
 
-CI runs this on Ubuntu, Windows and macOS, including tests that drive real shells through the whole server. Logs go to `<local data dir>/rmx/` (`client.log`, `server-<name>.log`); set the level with `RMX_LOG=debug`.
+CI runs these on Ubuntu and macOS, including tests that drive real shells through the whole server. Windows is type-checked with `cargo check --target x86_64-pc-windows-msvc`. Logs go to `<local data dir>/rmx/` (`client.log`, `server-<name>.log`); set the level with `RMX_LOG=debug`.
+
+How the code is organised, the code rules and the PR workflow are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
