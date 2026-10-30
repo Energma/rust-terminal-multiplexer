@@ -52,6 +52,7 @@ pub(super) fn windows_leader(b: &mut Builder, vim: bool) {
     l(b, "]", Paste);
     l(b, "/", Find);
     l(b, "d", Detach);
+    l(b, "e", OpenEditor);
     l(b, "shift+n", NewWorkspace);
     l(b, "(", PrevWorkspace);
     l(b, ")", NextWorkspace);

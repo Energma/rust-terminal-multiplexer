@@ -166,7 +166,7 @@ crossterm Event ─► (client) filter Press only ─► ClientMsg::Input
   - **Panes:** `split-pane{direction,size,command}`, `close-pane`, `move-focus{direction}`, `resize-pane{direction,amount}`, `toggle-pane-zoom`, `swap-pane`, `apply-layout{name}`, `toggle-sync-input`.
   - **Select mode and clipboard:** `select-mode`, `find`, `copy`, `paste`, `scroll{lines|page}`.
   - **UI:** `command-palette`, `open-menu`, `show-help`, `workspace-switcher`.
-  - **Workspace and config:** `rename-workspace`, `detach`, `reload-config`, `open-config`.
+  - **Workspace and config:** `rename-workspace`, `detach`, `reload-config`, `open-config`, `open-editor`.
   - **Mode switching:** `enter-mode{mode,sticky}`, `exit-mode`.
   - **Commands:** `run{command,in}`.
 

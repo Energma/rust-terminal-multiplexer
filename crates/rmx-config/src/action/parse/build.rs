@@ -82,6 +82,7 @@ pub(super) fn build(id: &str, id_span: Range<usize>, a: &mut Args<'_, '_>) -> Re
         "quit" => Quit,
         "reload-config" => ReloadConfig,
         "open-config" => OpenConfig,
+        "open-editor" => OpenEditor,
         "enter-mode" => EnterMode {
             mode: a.req_string("mode", "\"resize\"")?,
             sticky: a.bool("sticky")?.unwrap_or(false),

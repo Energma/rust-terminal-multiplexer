@@ -13,7 +13,7 @@
 //! Alt+]/[ next/prev tab, Alt+Shift+H/J/K/L focus. Leader: `t` new tab, `x` close tab,
 //! `w` close pane, `p` palette, `n`/`b` next/prev tab, `1`–`9` tab, `|` (and `\`) split
 //! right, `-` split down, arrows focus, `r` resize mode, `z` zoom, `[` select mode,
-//! `]` paste, `/` find, `d` detach, `l` lock, `s` workspace switcher, `N` new
+//! `]` paste, `/` find, `d` detach, `e` editor in the pane's folder, `l` lock, `s` workspace switcher, `N` new
 //! workspace, `(`/`)` prev/next workspace, `,` rename tab, `.` rename workspace,
 //! `space` next layout, `R` reload config, `?` help. Pressing L twice sends L itself
 //! to the pane (handled by the engine).

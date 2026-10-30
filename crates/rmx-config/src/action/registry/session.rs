@@ -58,6 +58,12 @@ pub(super) const ROWS: &[ActionInfo] = &[
         "Edit config.toml in a new tab",
     ),
     info(
+        "open-editor",
+        "Open editor here",
+        C::File,
+        "Open $EDITOR on the focused pane's folder in a new tab",
+    ),
+    info(
         "enter-mode",
         "Enter mode",
         C::View,
