@@ -116,6 +116,7 @@ Every action is also listed in the command palette (Leader `p`), together with i
 | `quit` | File | Close every pane and stop the background service |
 | `reload-config` | File | Re-read config.toml |
 | `open-config` | File | Edit config.toml in a new tab |
+| `open-editor` | File | Open $EDITOR on the focused pane's folder in a new tab |
 | `enter-mode` | View | Switch to another key table |
 | `exit-mode` | View | Return to normal mode |
 | `lock` | View | Send every key to the pane until unlocked |

@@ -55,6 +55,7 @@ impl Action {
             Quit => "quit",
             ReloadConfig => "reload-config",
             OpenConfig => "open-config",
+            OpenEditor => "open-editor",
             EnterMode { .. } => "enter-mode",
             ExitMode => "exit-mode",
             Lock => "lock",

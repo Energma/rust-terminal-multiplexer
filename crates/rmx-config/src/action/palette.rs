@@ -46,6 +46,7 @@ pub fn palette_actions() -> Vec<Action> {
         Quit,
         ReloadConfig,
         OpenConfig,
+        OpenEditor,
         EnterMode {
             mode: "resize".into(),
             sticky: true,

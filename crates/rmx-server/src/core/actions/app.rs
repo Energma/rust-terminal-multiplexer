@@ -1,6 +1,8 @@
 //! App-level actions: menus and help, quit, config, key modes, locking,
 //! running commands and sending keys.
 
+use std::path::Path;
+
 use anyhow::Result;
 use rmx_config::action::{Action, Dir, RunIn};
 use rmx_core::layout::PaneId;
@@ -43,6 +45,8 @@ impl Core {
                 }
                 self.new_tab(ws, Some(editor_command(&path)))?;
             }
+            // `new_tab` starts in the focused pane's cwd, so "." is that folder.
+            Action::OpenEditor => self.new_tab(ws, Some(editor_command(Path::new("."))))?,
             Action::EnterMode { mode, sticky } => {
                 if let Some(c) = self.clients.get_mut(&id) {
                     c.engine.set_mode(&mode, sticky);

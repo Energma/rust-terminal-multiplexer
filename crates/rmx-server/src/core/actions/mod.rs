@@ -92,6 +92,7 @@ impl Core {
             | Action::Quit
             | Action::ReloadConfig
             | Action::OpenConfig
+            | Action::OpenEditor
             | Action::EnterMode { .. }
             | Action::ExitMode
             | Action::Lock

@@ -41,6 +41,7 @@ pub fn menus() -> Vec<Menu> {
                 Entry("Paste", Action::Paste),
                 Entry("Find…", Action::Find),
                 Separator,
+                Entry("Open Editor Here", Action::OpenEditor),
                 Entry("Settings (config.toml)", Action::OpenConfig),
                 Entry("Reload Settings", Action::ReloadConfig),
             ],

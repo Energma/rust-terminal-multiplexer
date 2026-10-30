@@ -36,3 +36,16 @@ fn tmux_uses_ctrl_b() {
         KeyChord::parse("ctrl+space").unwrap()
     );
 }
+
+#[test]
+fn leader_e_opens_editor() {
+    let e = parse_sequence("e").unwrap();
+    for p in ["windows", "vim"] {
+        assert!(
+            bindings(p, preset_leader(p), false)
+                .iter()
+                .any(|(m, k, a)| m == "leader" && *k == e && *a == Action::OpenEditor),
+            "{p}"
+        );
+    }
+}
