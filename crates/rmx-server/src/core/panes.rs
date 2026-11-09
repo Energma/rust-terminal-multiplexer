@@ -46,8 +46,17 @@ impl Core {
     }
 
     pub(super) fn new_tab(&mut self, ws: WorkspaceId, command: Option<String>) -> Result<()> {
-        let size = self.sizes.get(&ws).copied().unwrap_or(DEFAULT_SIZE);
         let cwd = self.cwd_of_active(ws);
+        self.new_tab_in(ws, cwd, command)
+    }
+
+    pub(super) fn new_tab_in(
+        &mut self,
+        ws: WorkspaceId,
+        cwd: Option<PathBuf>,
+        command: Option<String>,
+    ) -> Result<()> {
+        let size = self.sizes.get(&ws).copied().unwrap_or(DEFAULT_SIZE);
         let pane = self.spawn_pane(
             SpawnSpec {
                 cwd,

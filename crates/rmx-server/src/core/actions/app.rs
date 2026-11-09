@@ -7,7 +7,7 @@ use anyhow::Result;
 use rmx_config::action::{Action, Dir, RunIn};
 use rmx_core::layout::PaneId;
 
-use crate::core::helpers::{editor_command, run_background, unescape};
+use crate::core::helpers::{editor_command, project_root, run_background, unescape};
 use crate::core::{ClientId, Core};
 use crate::state::WorkspaceId;
 use crate::ui::{self, Cmd, Overlay};
@@ -45,8 +45,12 @@ impl Core {
                 }
                 self.new_tab(ws, Some(editor_command(&path)))?;
             }
-            // `new_tab` starts in the focused pane's cwd, so "." is that folder.
-            Action::OpenEditor => self.new_tab(ws, Some(editor_command(Path::new("."))))?,
+            Action::OpenEditor => {
+                // Start in the root, not just pass it: an editor's file picker
+                // and project search work from its own working directory.
+                let root = self.cwd_of_active(ws).map(|dir| project_root(&dir));
+                self.new_tab_in(ws, root, Some(editor_command(Path::new("."))))?;
+            }
             Action::EnterMode { mode, sticky } => {
                 if let Some(c) = self.clients.get_mut(&id) {
                     c.engine.set_mode(&mode, sticky);

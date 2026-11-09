@@ -70,6 +70,7 @@ The **leader key** is `Ctrl+Space`: press it, then a letter. A popup shows what 
 | Menu bar / help | | `F10` / `F1` |
 | Command palette | `p` | `Ctrl+Shift+P`* |
 | Session manager | `s` | |
+| Open editor in the current project | `e` | |
 | New tab / close tab | `t` / `x` | `Ctrl+Shift+T`* |
 | Next / previous tab | `n` / `b` | `Alt+]` / `Alt+[`, `Ctrl+Tab`* |
 | Go to tab N | `1`–`9` | `Alt+1`–`9` |

@@ -1,6 +1,6 @@
 //! Small free helpers shared by actions and the control API.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use rmx_config::action::Dir;
@@ -37,7 +37,7 @@ pub(super) fn unescape(s: &str) -> String {
 }
 
 /// The user's editor, or a sensible per-OS default.
-pub(super) fn editor_command(path: &std::path::Path) -> String {
+pub(super) fn editor_command(path: &Path) -> String {
     let editor = std::env::var("VISUAL")
         .or_else(|_| std::env::var("EDITOR"))
         .unwrap_or_else(|_| {
@@ -48,6 +48,15 @@ pub(super) fn editor_command(path: &std::path::Path) -> String {
             }
         });
     format!("{editor} \"{}\"", path.display())
+}
+
+/// The git repository `dir` is in, or `dir` itself outside any repository.
+pub(super) fn project_root(dir: &Path) -> PathBuf {
+    dir.ancestors()
+        // `exists`, not `is_dir`: `.git` is a file in worktrees and submodules.
+        .find(|d| d.join(".git").exists())
+        .unwrap_or(dir)
+        .to_path_buf()
 }
 
 pub(super) fn run_background(command: &str, cwd: Option<PathBuf>) -> Result<()> {
