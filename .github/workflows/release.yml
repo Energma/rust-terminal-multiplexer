@@ -1,18 +1,140 @@
 name: Release
 
-# Push a tag like v0.2.0 to build every platform and publish a GitHub release.
+# Two ways to release:
+# - Actions tab → Release → Run workflow: picks the version, bumps Cargo.toml,
+#   commits, tags and publishes, all from the form below.
+# - Or push a tag like v0.2.0 yourself, with Cargo.toml already bumped.
+# The button can't just push a tag and let the tag trigger the build: pushes
+# made with GITHUB_TOKEN don't start other workflows, so both paths live here.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump from the latest tag"
+        type: choice
+        options: [patch, minor, major]
+        default: minor
+      version:
+        description: "Exact version instead, e.g. 1.4.0 (leave empty to use the bump)"
+        type: string
+        required: false
+      commit:
+        description: "Commit SHA or branch to release (empty = main)"
+        type: string
+        required: false
+      notes:
+        description: "Text shown above the generated release notes"
+        type: string
+        required: false
+      dry_run:
+        description: "Dry run: do everything except push and publish"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  actions: read
+
+# Two releases at once would race for the same version number.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  prepare:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit || 'main' }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      # Only release commits CI has already passed on.
+      - name: Check CI passed on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          ok=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow CI --commit "$sha" \
+            --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')
+          if [ "$ok" = 0 ]; then
+            echo "::error::CI has not passed on $sha; release a commit with a green CI run"
+            exit 1
+          fi
+      - name: Pick the version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+          EXACT: ${{ inputs.version }}
+        run: |
+          if [ -n "$EXACT" ]; then
+            v=${EXACT#v}
+          else
+            latest=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)
+            IFS=. read -r major minor patch <<< "${latest#v}"
+            major=${major:-0}; minor=${minor:-0}; patch=${patch:-0}
+            case "$BUMP" in
+              major) v="$((major + 1)).0.0" ;;
+              minor) v="$major.$((minor + 1)).0" ;;
+              patch) v="$major.$minor.$((patch + 1))" ;;
+            esac
+          fi
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::\"$v\" is not a version like 1.2.3"; exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+            echo "::error::tag v$v already exists"; exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
+      # `rmx update` compares its own version with the tag, so they must match.
+      - name: Bump Cargo.toml and Cargo.lock
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          sed -i -E "/^\[workspace\.package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$VERSION\"/" Cargo.toml
+          grep -q "^version = \"$VERSION\"" Cargo.toml
+          cargo update --workspace
+          cargo metadata --locked --format-version 1 >/dev/null
+      - name: Commit, tag and push
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          NOTES: ${{ inputs.notes }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898583+github-actions[bot]@users.noreply.github.com"
+          base=$(git rev-parse HEAD)
+          git commit -am "chore: release $TAG"
+          git tag -a "$TAG" -m "$TAG${NOTES:+: $NOTES}"
+          git show --stat HEAD
+          # Releasing main's tip moves main forward with the bump. An older
+          # commit gets a tag only, so main is never rewound or forked.
+          main=$(git rev-parse origin/main)
+          refs=("refs/tags/$TAG")
+          [ "$base" = "$main" ] && refs=("HEAD:refs/heads/main" "${refs[@]}")
+          if [ "$DRY_RUN" = true ]; then
+            echo "Dry run: would push ${refs[*]}"
+          else
+            git push --atomic origin "${refs[@]}"
+          fi
+
   build:
+    needs: prepare
+    # Runs after `prepare` on the button, or straight away on a tag push.
+    if: >-
+      !cancelled() && !inputs.dry_run &&
+      (needs.prepare.result == 'success' || needs.prepare.result == 'skipped')
+    env:
+      TAG: ${{ needs.prepare.outputs.tag || github.ref_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -27,6 +149,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -37,7 +161,7 @@ jobs:
         if: matrix.archive == 'tar.gz'
         shell: bash
         run: |
-          name=rmx-${GITHUB_REF_NAME}-${{ matrix.target }}
+          name=rmx-${TAG}-${{ matrix.target }}
           mkdir "$name"
           cp target/${{ matrix.target }}/release/rmx README.md docs/CONFIG.md "$name"/
           tar czf "$name.tar.gz" "$name"
@@ -46,7 +170,7 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          $name = "rmx-$env:GITHUB_REF_NAME-${{ matrix.target }}"
+          $name = "rmx-$env:TAG-${{ matrix.target }}"
           New-Item -ItemType Directory $name | Out-Null
           Copy-Item target/${{ matrix.target }}/release/rmx.exe, README.md, docs/CONFIG.md $name
           Compress-Archive $name "$name.zip"
@@ -57,7 +181,8 @@ jobs:
           path: rmx-*
 
   publish:
-    needs: build
+    needs: [prepare, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -65,5 +190,7 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare.outputs.tag || github.ref_name }}
+          body: ${{ inputs.notes }}
           files: rmx-*
           generate_release_notes: true
