@@ -61,7 +61,7 @@ pub(super) const ROWS: &[ActionInfo] = &[
         "open-editor",
         "Open editor here",
         C::File,
-        "Open $EDITOR on the focused pane's folder in a new tab",
+        "Open $EDITOR on the focused pane's project (its git root) in a new tab",
     ),
     info(
         "enter-mode",

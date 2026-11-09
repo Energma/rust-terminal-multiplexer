@@ -103,7 +103,8 @@ pub enum Action {
     Quit,
     ReloadConfig,
     OpenConfig,
-    /// `$VISUAL`/`$EDITOR` on the focused pane's folder, in a new tab.
+    /// `$VISUAL`/`$EDITOR` on the focused pane's project (git root, else its
+    /// folder), in a new tab.
     OpenEditor,
     // modes
     EnterMode {
