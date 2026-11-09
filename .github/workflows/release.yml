@@ -1,21 +1,24 @@
 name: Release
 
-# Two ways to release:
-# - Actions tab → Release → Run workflow: picks the version, bumps Cargo.toml,
-#   commits, tags and publishes, all from the form below.
-# - Or push a tag like v0.2.0 yourself, with Cargo.toml already bumped.
-# The button can't just push a tag and let the tag trigger the build: pushes
-# made with GITHUB_TOKEN don't start other workflows, so both paths live here.
+# Every green CI run on main prepares and builds the next version on its own.
+# Publishing waits for approval on the `release` environment (Review
+# deployments → Approve); nothing is pushed or published before that.
+# - Version: from conventional commits since the last tag (see
+#   scripts/release-version.sh), or picked in the Run workflow form.
+# - A newer run replaces an older one still waiting for approval.
+# - Pushing a v* tag by hand still builds it; publishing waits for approval too.
 on:
-  push:
-    tags: ["v*"]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       bump:
-        description: "Version bump from the latest tag"
+        description: "Version bump from the latest tag (auto = from commit messages)"
         type: choice
-        options: [patch, minor, major]
-        default: minor
+        options: [auto, patch, minor, major]
+        default: auto
       version:
         description: "Exact version instead, e.g. 1.4.0 (leave empty to use the bump)"
         type: string
@@ -28,37 +31,34 @@ on:
         description: "Text shown above the generated release notes"
         type: string
         required: false
-      dry_run:
-        description: "Dry run: do everything except push and publish"
-        type: boolean
-        default: false
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: write
   actions: read
-
-# Two releases at once would race for the same version number.
-concurrency:
-  group: release
-  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   prepare:
-    if: github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.version.outputs.tag }}
+      sha: ${{ steps.version.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit || 'main' }}
+          ref: ${{ github.event.workflow_run.head_sha || inputs.commit || 'main' }}
           fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@stable
-      # Only release commits CI has already passed on.
+      # The automatic path only starts after green CI; the form can pick any
+      # commit, so check it there.
       - name: Check CI passed on this commit
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -66,75 +66,44 @@ jobs:
           ok=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow CI --commit "$sha" \
             --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')
           if [ "$ok" = 0 ]; then
-            echo "::error::CI has not passed on $sha; release a commit with a green CI run"
+            echo "::error::CI has not passed on $sha; wait for it or pick a commit with green CI"
             exit 1
           fi
       - name: Pick the version
         id: version
         env:
-          BUMP: ${{ inputs.bump }}
+          BUMP: ${{ inputs.bump || 'auto' }}
           EXACT: ${{ inputs.version }}
         run: |
-          if [ -n "$EXACT" ]; then
-            v=${EXACT#v}
-          else
-            latest=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)
-            IFS=. read -r major minor patch <<< "${latest#v}"
-            major=${major:-0}; minor=${minor:-0}; patch=${patch:-0}
-            case "$BUMP" in
-              major) v="$((major + 1)).0.0" ;;
-              minor) v="$major.$((minor + 1)).0" ;;
-              patch) v="$major.$minor.$((patch + 1))" ;;
-            esac
+          set +e
+          v=$(bash scripts/release-version.sh "$BUMP" "$EXACT"); rc=$?
+          set -e
+          if [ "$rc" = 3 ]; then
+            echo "Nothing to release: no commits since the last tag." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
-          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::\"$v\" is not a version like 1.2.3"; exit 1
-          fi
-          if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
-            echo "::error::tag v$v already exists"; exit 1
-          fi
-          echo "version=$v" >> "$GITHUB_OUTPUT"
+          [ "$rc" = 0 ] || exit "$rc"
           echo "tag=v$v" >> "$GITHUB_OUTPUT"
-      # `rmx update` compares its own version with the tag, so they must match.
-      - name: Bump Cargo.toml and Cargo.lock
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          sed -i -E "/^\[workspace\.package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"$VERSION\"/" Cargo.toml
-          grep -q "^version = \"$VERSION\"" Cargo.toml
-          cargo update --workspace
-          cargo metadata --locked --format-version 1 >/dev/null
-      - name: Commit, tag and push
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-          NOTES: ${{ inputs.notes }}
-          DRY_RUN: ${{ inputs.dry_run }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898583+github-actions[bot]@users.noreply.github.com"
-          base=$(git rev-parse HEAD)
-          git commit -am "chore: release $TAG"
-          git tag -a "$TAG" -m "$TAG${NOTES:+: $NOTES}"
-          git show --stat HEAD
-          # Releasing main's tip moves main forward with the bump. An older
-          # commit gets a tag only, so main is never rewound or forked.
-          main=$(git rev-parse origin/main)
-          refs=("refs/tags/$TAG")
-          [ "$base" = "$main" ] && refs=("HEAD:refs/heads/main" "${refs[@]}")
-          if [ "$DRY_RUN" = true ]; then
-            echo "Dry run: would push ${refs[*]}"
-          else
-            git push --atomic origin "${refs[@]}"
-          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          last=$(git tag -l 'v[0-9]*' --sort=-v:refname | head -1)
+          {
+            echo "## Release v$v (waiting for approval to publish)"
+            echo
+            echo "Commit \`$(git rev-parse --short HEAD)\`, changes since ${last:-the start}:"
+            echo
+            git log --no-merges --format='- %s' "${last:+$last..}HEAD"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   build:
     needs: prepare
-    # Runs after `prepare` on the button, or straight away on a tag push.
+    # After `prepare` found something to release, or straight away on a tag push.
     if: >-
-      !cancelled() && !inputs.dry_run &&
-      (needs.prepare.result == 'success' || needs.prepare.result == 'skipped')
+      !cancelled() &&
+      ((needs.prepare.result == 'success' && needs.prepare.outputs.tag != '') ||
+       (needs.prepare.result == 'skipped' && github.event_name == 'push'))
     env:
       TAG: ${{ needs.prepare.outputs.tag || github.ref_name }}
+      BUMPED: ${{ needs.prepare.outputs.tag != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -150,10 +119,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TAG }}
+          ref: ${{ needs.prepare.outputs.sha || github.ref }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      # The version commit is only pushed on publish, so build from the same
+      # bump applied here; `publish` repeats it to make that commit.
+      - name: Bump the version
+        if: env.BUMPED == 'true'
+        shell: bash
+        run: bash scripts/release-bump.sh "${TAG#v}"
       - if: matrix.target == 'x86_64-unknown-linux-musl'
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - run: cargo build --release --locked --target ${{ matrix.target }}
@@ -184,13 +159,44 @@ jobs:
     needs: [prepare, build]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
+    # Required reviewers on this environment make the job wait for approval.
+    environment: release
+    # A newer run waiting here replaces an older one that is still waiting.
+    concurrency:
+      group: release-publish
+      cancel-in-progress: true
+    env:
+      TAG: ${{ needs.prepare.outputs.tag || github.ref_name }}
     steps:
+      - uses: actions/checkout@v4
+        if: needs.prepare.outputs.tag != ''
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        if: needs.prepare.outputs.tag != ''
+      - name: Commit, tag and push the version
+        if: needs.prepare.outputs.tag != ''
+        env:
+          NOTES: ${{ inputs.notes }}
+        run: |
+          bash scripts/release-bump.sh "${TAG#v}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898583+github-actions[bot]@users.noreply.github.com"
+          base=$(git rev-parse HEAD)
+          git commit -am "chore: release $TAG"
+          git tag -a "$TAG" -m "$TAG${NOTES:+: $NOTES}"
+          # Main moves forward with the bump only if nothing merged since; an
+          # older commit gets a tag only, so main is never rewound or forked.
+          refs=("refs/tags/$TAG")
+          [ "$base" = "$(git rev-parse origin/main)" ] && refs=("HEAD:refs/heads/main" "${refs[@]}")
+          git push --atomic origin "${refs[@]}"
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.prepare.outputs.tag || github.ref_name }}
+          tag_name: ${{ env.TAG }}
           body: ${{ inputs.notes }}
           files: rmx-*
           generate_release_notes: true

@@ -105,7 +105,7 @@ For a structural refactor, also confirm:
 - **One concern per commit.** Use a conventional, imperative message that says why, e.g. `refactor(config): split action registry by category` or `fix(ipc): …`.
 - **Branch from `main`** and open a PR. The PR is merged only when CI is green.
 - **No AI attribution.** No `Co-Authored-By` trailers for tools.
-- **Releases:** Actions → Release → Run workflow. Pick a bump or an exact version, optionally a commit and notes; it bumps `Cargo.toml`, tags and publishes. Tick "dry run" to see what it would do. Pushing a `v*` tag by hand still works. See the `energma-release` skill for the checklist.
+- **Releases:** every green CI run on `main` prepares and builds the next version automatically. The version comes from the commit messages: `feat` → minor, `!`/`BREAKING CHANGE` → major (minor while 0.x), anything else → patch. Publishing waits for approval: open the Release run → **Review deployments** → **Approve**. Only then is the version commit and tag pushed and the release published, which is when `rmx update` and `install.sh` see it. A newer merge replaces a run still waiting. To pick the version, commit or notes yourself, use Actions → Release → Run workflow. See the `energma-release` skill for the checklist.
 
 ## Logs and debugging
 
