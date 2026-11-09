@@ -105,7 +105,7 @@ For a structural refactor, also confirm:
 - **One concern per commit.** Use a conventional, imperative message that says why, e.g. `refactor(config): split action registry by category` or `fix(ipc): …`.
 - **Branch from `main`** and open a PR. The PR is merged only when CI is green.
 - **No AI attribution.** No `Co-Authored-By` trailers for tools.
-- **Releases** follow the `energma-release` skill.
+- **Releases:** Actions → Release → Run workflow. Pick a bump or an exact version, optionally a commit and notes; it bumps `Cargo.toml`, tags and publishes. Tick "dry run" to see what it would do. Pushing a `v*` tag by hand still works. See the `energma-release` skill for the checklist.
 
 ## Logs and debugging
 
