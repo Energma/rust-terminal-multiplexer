@@ -18,6 +18,7 @@ const TOP_KEYS: &[&str] = &[
     "direct_keys",
     "general",
     "leader",
+    "editor",
     "theme",
     "keys",
     "commands",
@@ -88,6 +89,7 @@ impl Parser<'_> {
                 }
                 "general" => self.general(as_table(v, "[general]")?)?,
                 "leader" => leader_key_set = self.leader(as_table(v, "[leader]")?)?,
+                "editor" => self.editor(as_table(v, "[editor]")?)?,
                 "theme" => self.theme(as_table(v, "[theme]")?)?,
                 "keys" => keys = Some(as_table(v, "[keys]")?),
                 "commands" => self.commands(v)?,

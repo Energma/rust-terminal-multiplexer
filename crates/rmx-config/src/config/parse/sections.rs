@@ -1,4 +1,5 @@
-//! The simple sections: `[general]`, `[leader]`, `[theme]` and `[[commands]]`.
+//! The simple sections: `[general]`, `[leader]`, `[editor]`, `[theme]` and
+//! `[[commands]]`.
 
 use ratatui::style::Color;
 use toml::de::DeTable;
@@ -19,6 +20,7 @@ const GENERAL_KEYS: &[&str] = &[
     "restore_on_start",
 ];
 const LEADER_KEYS: &[&str] = &["key", "timeout_ms", "show_hints"];
+const EDITOR_KEYS: &[&str] = &["command", "terminal"];
 
 impl Parser<'_> {
     pub(super) fn general(&mut self, t: &DeTable<'_>) -> Result<(), Diag> {
@@ -61,6 +63,32 @@ impl Parser<'_> {
             }
         }
         Ok(key_set)
+    }
+
+    pub(super) fn editor(&mut self, t: &DeTable<'_>) -> Result<(), Diag> {
+        let e = &mut self.config.editor;
+        let mut terminal = None;
+        for (k, v) in entries(t) {
+            match k.get_ref().as_ref() {
+                "command" => {
+                    let s = as_str(v, "command")?.trim();
+                    if s.is_empty() {
+                        return Err(Diag::new(v.span(), "`command` can't be empty")
+                            .help("e.g. command = \"nvim\", or delete the line for VS Code"));
+                    }
+                    e.command = s.to_string();
+                    // Most editors people name here are terminal ones; the
+                    // GUI default is the exception.
+                    e.terminal = true;
+                }
+                "terminal" => terminal = Some(as_bool(v, "terminal")?),
+                _ => return Err(unknown_key(k, "editor", EDITOR_KEYS)),
+            }
+        }
+        if let Some(t) = terminal {
+            e.terminal = t;
+        }
+        Ok(())
     }
 
     pub(super) fn theme(&mut self, t: &DeTable<'_>) -> Result<(), Diag> {

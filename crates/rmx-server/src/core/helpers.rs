@@ -36,18 +36,34 @@ pub(super) fn unescape(s: &str) -> String {
     out
 }
 
-/// The user's editor, or a sensible per-OS default.
-pub(super) fn editor_command(path: &Path) -> String {
-    let editor = std::env::var("VISUAL")
+/// The terminal editor to fall back on when the configured one isn't
+/// installed: the user's, or one every system of that OS has.
+pub(super) fn fallback_editor() -> String {
+    std::env::var("VISUAL")
         .or_else(|_| std::env::var("EDITOR"))
-        .unwrap_or_else(|_| {
-            if cfg!(windows) {
-                "notepad".into()
-            } else {
-                "nano".into()
-            }
-        });
-    format!("{editor} \"{}\"", path.display())
+        .unwrap_or_else(|_| if cfg!(windows) { "notepad" } else { "nano" }.into())
+}
+
+/// Whether the program `command` starts with can be found, so a missing
+/// editor gets a fallback instead of a tab that dies or nothing at all.
+pub(super) fn installed(command: &str) -> bool {
+    let Some(program) = command.split_whitespace().next() else {
+        return false;
+    };
+    if program.contains(['/', '\\']) {
+        return Path::new(program).is_file();
+    }
+    // `code` is `code.cmd` on Windows.
+    let exts: &[&str] = if cfg!(windows) {
+        &["", ".exe", ".cmd", ".bat"]
+    } else {
+        &[""]
+    };
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    std::env::split_paths(&path).any(|dir| {
+        exts.iter()
+            .any(|e| dir.join(format!("{program}{e}")).is_file())
+    })
 }
 
 /// The git repository `dir` is in, or `dir` itself outside any repository.

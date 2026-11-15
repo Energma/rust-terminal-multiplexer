@@ -19,7 +19,7 @@ use crate::action::Action;
 use crate::keys::KeyChord;
 
 pub use error::{ConfigError, Warning};
-pub use settings::{CustomCommand, DirectKeys, General, LeaderConfig};
+pub use settings::{CustomCommand, DirectKeys, EditorConfig, General, LeaderConfig};
 pub use theme::Theme;
 
 /// A commented starter config (`rmx config init`). Parses with no warnings.
@@ -40,6 +40,7 @@ pub struct Config {
     pub direct_keys: DirectKeys,
     pub general: General,
     pub leader: LeaderConfig,
+    pub editor: EditorConfig,
     pub theme: Theme,
     pub commands: Vec<CustomCommand>,
     user_keys: Vec<UserBinding>,
@@ -52,6 +53,7 @@ impl Default for Config {
             direct_keys: DirectKeys::Auto,
             general: General::default(),
             leader: LeaderConfig::for_preset("windows"),
+            editor: EditorConfig::default(),
             theme: Theme::default(),
             commands: Vec::new(),
             user_keys: Vec::new(),

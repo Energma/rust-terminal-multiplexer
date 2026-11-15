@@ -1,13 +1,13 @@
 //! App-level actions: menus and help, quit, config, key modes, locking,
 //! running commands and sending keys.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use rmx_config::action::{Action, Dir, RunIn};
 use rmx_core::layout::PaneId;
 
-use crate::core::helpers::{editor_command, project_root, run_background, unescape};
+use crate::core::helpers::{fallback_editor, installed, project_root, run_background, unescape};
 use crate::core::{ClientId, Core};
 use crate::state::WorkspaceId;
 use crate::ui::{self, Cmd, Overlay};
@@ -43,13 +43,14 @@ impl Core {
                     }
                     std::fs::write(&path, rmx_config::DEFAULT_CONFIG_TOML)?;
                 }
-                self.new_tab(ws, Some(editor_command(&path)))?;
+                let cwd = self.cwd_of_active(ws);
+                self.open_in_editor(id, ws, cwd, &path)?;
             }
             Action::OpenEditor => {
                 // Start in the root, not just pass it: an editor's file picker
                 // and project search work from its own working directory.
                 let root = self.cwd_of_active(ws).map(|dir| project_root(&dir));
-                self.new_tab_in(ws, root, Some(editor_command(Path::new("."))))?;
+                self.open_in_editor(id, ws, root, Path::new("."))?;
             }
             Action::EnterMode { mode, sticky } => {
                 if let Some(c) = self.clients.get_mut(&id) {
@@ -90,5 +91,32 @@ impl Core {
             _ => unreachable!("routed by dispatch"),
         }
         Ok(())
+    }
+
+    /// Opens `target` in the `[editor]`, started in `cwd`.
+    fn open_in_editor(
+        &mut self,
+        id: ClientId,
+        ws: WorkspaceId,
+        cwd: Option<PathBuf>,
+        target: &Path,
+    ) -> Result<()> {
+        let editor = self.config.editor.clone();
+        let target = format!("\"{}\"", target.display());
+        if !installed(&editor.command) {
+            let fallback = fallback_editor();
+            self.toast(
+                id,
+                format!("`{}` isn't installed; opened {fallback}", editor.command),
+                false,
+            );
+            return self.new_tab_in(ws, cwd, Some(format!("{fallback} {target}")));
+        }
+        let command = format!("{} {target}", editor.command);
+        if editor.terminal {
+            self.new_tab_in(ws, cwd, Some(command))
+        } else {
+            run_background(&command, cwd)
+        }
     }
 }

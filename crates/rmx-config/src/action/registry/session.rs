@@ -55,13 +55,13 @@ pub(super) const ROWS: &[ActionInfo] = &[
         "open-config",
         "Open config",
         C::File,
-        "Edit config.toml in a new tab",
+        "Edit config.toml in your editor",
     ),
     info(
         "open-editor",
         "Open editor here",
         C::File,
-        "Open $EDITOR on the focused pane's project (its git root) in a new tab",
+        "Open your editor (VS Code by default) on the focused pane's project (its git root)",
     ),
     info(
         "enter-mode",

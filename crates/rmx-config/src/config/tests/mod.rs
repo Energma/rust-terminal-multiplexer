@@ -60,3 +60,27 @@ fn default_path_ends_in_config_toml() {
         assert!(p.ends_with("rmx/config.toml"), "{}", p.display());
     }
 }
+
+#[test]
+fn editor_defaults_to_vs_code_in_its_own_window() {
+    let (c, _) = parse("");
+    assert_eq!(c.editor.command, "code");
+    assert!(!c.editor.terminal);
+}
+
+#[test]
+fn own_editor_runs_in_a_tab_unless_told_otherwise() {
+    let (c, _) = parse("[editor]\ncommand = \"nvim\"");
+    assert_eq!(c.editor.command, "nvim");
+    assert!(c.editor.terminal);
+    // Order doesn't matter: an explicit `terminal` always wins.
+    let (c, _) = parse("[editor]\nterminal = false\ncommand = \"zed\"");
+    assert!(!c.editor.terminal);
+    assert!(err("[editor]\ncommand = \" \"").message.contains("empty"));
+    assert!(
+        err("[editor]\ncomand = \"vim\"")
+            .help
+            .unwrap()
+            .contains("command")
+    );
+}

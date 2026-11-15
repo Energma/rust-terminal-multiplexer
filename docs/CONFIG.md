@@ -115,13 +115,27 @@ Every action is also listed in the command palette (Leader `p`), together with i
 | `detach` | File | Detach; everything keeps running in the background |
 | `quit` | File | Close every pane and stop the background service |
 | `reload-config` | File | Re-read config.toml |
-| `open-config` | File | Edit config.toml in a new tab |
-| `open-editor` | File | Open $EDITOR on the focused pane's project (its git root) in a new tab |
+| `open-config` | File | Edit config.toml in your editor |
+| `open-editor` | File | Open your editor (VS Code by default) on the focused pane's project (its git root) |
 | `enter-mode` | View | Switch to another key table |
 | `exit-mode` | View | Return to normal mode |
 | `lock` | View | Send every key to the pane until unlocked |
 | `run` | File | Run `command` in a new tab, split or the background |
 | `send-keys` | Edit | Type `keys` into the focused pane |
+
+## Editor
+
+Leader `e` opens the focused pane's project (its git root) in your editor, and `open-config` opens config.toml in it.
+
+```toml
+[editor]
+command = "code"   # the default: VS Code, in its own window
+terminal = false
+```
+
+- `command` runs through the system shell with the folder or file appended, e.g. `"nvim"`, `"hx"`, `"zed"`, `"code --new-window"`.
+- `terminal = true` runs it in a new rmx tab, which is what terminal editors need. It is the default once you set your own `command`, so `command = "nvim"` alone works. GUI editors other than VS Code need `terminal = false`.
+- If the command isn't installed (say, on a server over SSH), rmx opens `$VISUAL`, `$EDITOR` or `nano` (`notepad` on Windows) in a new tab instead, and says so.
 
 ## Theme
 
