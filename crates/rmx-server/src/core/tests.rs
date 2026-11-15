@@ -1,4 +1,4 @@
-use super::helpers::{project_root, unescape};
+use super::helpers::{installed, project_root, unescape};
 
 #[test]
 fn unescapes_send_keys() {
@@ -25,4 +25,13 @@ fn project_root_finds_the_enclosing_repository() {
     assert_eq!(project_root(&worktree), worktree);
 
     std::fs::remove_dir_all(&base).unwrap();
+}
+
+#[test]
+fn installed_looks_up_the_program_on_path() {
+    let shell = if cfg!(windows) { "cmd" } else { "sh" };
+    assert!(installed(&format!("{shell} --flag")));
+    assert!(!installed("rmx-no-such-editor --wait"));
+    assert!(!installed("   "));
+    assert!(!installed("/definitely/not/here/editor"));
 }

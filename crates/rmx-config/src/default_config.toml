@@ -20,6 +20,11 @@ key = "ctrl+space"        # the tmux preset uses "ctrl+b"
 timeout_ms = 2000         # 0 = wait forever for the key after the leader
 show_hints = true         # show what the next key can do
 
+[editor]
+# What Leader e (open the pane's project) and "Open config" launch.
+command = "code"          # VS Code; or "nvim", "hx", "zed", ...
+terminal = false          # true runs it in a new rmx tab (the default when you set command)
+
 [theme]
 # Colors are "#rrggbb", an ANSI index ("238") or a name ("blue").
 # status_bg = "#1e1e2e"

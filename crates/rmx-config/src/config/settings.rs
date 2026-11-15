@@ -1,5 +1,5 @@
 //! Plain setting groups of a [`Config`](super::Config): `[general]`, `[leader]`,
-//! `direct_keys` and `[[commands]]` entries.
+//! `[editor]`, `direct_keys` and `[[commands]]` entries.
 
 use crate::action::Action;
 use crate::keys::KeyChord;
@@ -50,6 +50,26 @@ impl LeaderConfig {
             key: presets::preset_leader(preset),
             timeout_ms: 2000,
             show_hints: true,
+        }
+    }
+}
+
+/// `[editor]`: what `open-editor` and `open-config` launch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EditorConfig {
+    /// Run through the shell with the folder or file appended.
+    pub command: String,
+    /// Run in a new rmx tab (nvim, nano, ...) rather than on its own, as a
+    /// GUI editor that opens its own window does.
+    pub terminal: bool,
+}
+
+impl Default for EditorConfig {
+    fn default() -> Self {
+        // VS Code, matching blink's default editor.
+        Self {
+            command: "code".into(),
+            terminal: false,
         }
     }
 }
